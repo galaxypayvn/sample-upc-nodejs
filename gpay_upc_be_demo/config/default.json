@@ -1,0 +1,18 @@
+{
+  "GatewayUrl":"http://localhost:3000",
+  "ClientUrl":"http://localhost:4200",
+  "server": {
+    "host": "http://localhost",
+    "port": "9696"
+  },
+  "secure": {
+    "endpoint": "https://uat-payment.hdbank.com.vn:6969"
+  },
+  "upc":{
+    "endpoint": "https://uat-secure.galaxypay.vn",
+    "apiKey": "ICB7IjMyMzUiOiJWaWV0IEpldCIsImNyZWF0ZWQiOiIyMDIyMDgxNjEwNDU0MCJ9.8269013cb5af84a2db3a98b81c17ba4f7c975e494eaf9c8fce616f6f540359da",
+    "salt": "GPAY"
+  },
+  "AES256Key": "9d5b2dfde02abb9a49fc2bba7c26862ac44314f732ac97532f5055d877c49d68",
+  "SHA256Salt": "GPAY"
+}
