@@ -16,7 +16,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({ secret: 'mySecret', resave: false, saveUninitialized: false }));
 
-const port = 8000
+const port = 8383
 const fetch = require("node-fetch");
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -231,11 +231,11 @@ app.get('/', (req, res) => {
         otp: "on",
         request: "purchase",
         language: "vi",
-        successURL: "http://localhost:8000/api/result",
-        failureURL: "http://localhost:8000/api/result",
-        pendingURL: "http://localhost:8000/api/result",
-        cancelURL: "http://localhost:8000/api/cancel",
-        ipnURL: "https://0b04-58-186-241-92.ap.ngrok.io/api/ipn",
+        successURL: "http://localhost:8383/api/result",
+        failureURL: "http://localhost:8383/api/result",
+        pendingURL: "http://localhost:8383/api/result",
+        cancelURL: "http://localhost:8383/api/cancel",
+        ipnURL: "https://43f9-58-186-241-92.ap.ngrok.io/api/ipn",
         extraData: {
             customer: {
                 firstName: "Jacob",
