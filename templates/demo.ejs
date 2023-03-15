@@ -6,12 +6,18 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Galaxy Pay Secured Payment</title>
+    <link rel="icon" href="/images/favicon.ico">
     <link rel="stylesheet" type="text/css" href="/css/demo.css" />
 
 </head>
 
 <body>
-    <div class=" container">
+    <div class="container">
+        <div>
+            <button id="btnSubmit" class="w-20 btn-hd-blue" onclick="location.href='<%= data.playgroundURL%>'">
+                API Playground
+            </button>
+        </div>
         <div class="flex-row ml-1 mr-1">
             <form action="/pay" method="post" id="mainForm">
                 <h3 class="h3">Order Information</h3>

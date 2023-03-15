@@ -1,23 +1,23 @@
+require("dotenv").config();
 const express = require('express')
 const _ejs = require("ejs");
 const path = require("path");
 const app = express()
-const { createHash } = require("crypto");
-const request = require("request");
-const { Router } = require('express');
-const { v4: uuidv4 } = require("uuid");
+
 const session = require("express-session");
-const redis = require("redis");
-const httpContext = require("express-http-context");
 const NodeCache = require("node-cache");
 const myCache = new NodeCache({ stdTTL: 600, checkperiod: 600 });
+const { requestPromise } = require("./service/gatewayService")
+const { APP_PORT, PLAYGROUND_URL, APP_PUBLIC_URL, MERCHANT_GW_URL } = require("./scripts/config/config")
+const { genYYYYMMDDHHmmss, uniqueId } = require("./scripts/util/commonUtils")
+const { sha256SignString } = require("./scripts/util/crypto")
+
+const port = APP_PORT
+const fetch = require("node-fetch");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({ secret: 'mySecret', resave: false, saveUninitialized: false }));
-
-const port = 8000
-const fetch = require("node-fetch");
 
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -26,173 +26,11 @@ app.set("views", path.join(__dirname, "templates"));
 app.set("view engine", "ejs");
 app.engine("ejs", function (filename, payload, cb) {
     payload = payload || {};
+    payload.APP_PUBLIC_URL = APP_PUBLIC_URL;
     _ejs.renderFile(filename, payload, {}, cb);
 });
 
-function convertDateTimeToUtc(dateTime) {
-    return new Date(
-        dateTime.getUTCFullYear(),
-        dateTime.getUTCMonth(),
-        dateTime.getUTCDate(),
-        dateTime.getUTCHours(),
-        dateTime.getUTCMinutes(),
-        dateTime.getUTCSeconds()
-    );
-}
 
-function convertUtc2VnTimeZone(dateTime) {
-    dateTime.setHours(dateTime.getHours() + 7);
-    return dateTime;
-}
-
-function uniqueId() {
-    return uuidv4().toString().replace(/-/g, "");
-}
-
-function genYYYYMMDDHHmmss() {
-    let now = convertDateTimeToUtc(new Date()); // gen datetime UTC
-    now = convertUtc2VnTimeZone(now); // then convert to +7
-
-    let year = "" + now.getFullYear();
-    let month = "" + (now.getMonth() + 1);
-    if (month.length == 1) {
-        month = "0" + month;
-    }
-    let day = "" + now.getDate();
-    if (day.length == 1) {
-        day = "0" + day;
-    }
-    let hour = "" + now.getHours();
-    if (hour.length == 1) {
-        hour = "0" + hour;
-    }
-    let minute = "" + now.getMinutes();
-    if (minute.length == 1) {
-        minute = "0" + minute;
-    }
-    let second = "" + now.getSeconds();
-    if (second.length == 1) {
-        second = "0" + second;
-    }
-    return `${year}${month}${day}${hour}${minute}${second}`;
-}
-
-
-
-const sha256 = (text, privateKey = "") => {
-    const hash = createHash("sha256");
-    hash.update(text + privateKey, "utf8"); // add hash utf8
-    return hash.digest("hex");
-};
-
-const sha256SignString = (rawString, privateKey) => {
-    return sha256(rawString, privateKey);
-};
-
-const connectClient = async (databaseIndex) => {
-    const port = "6379" || 6379;
-    const host = "master.redis-uat-upc-2022-06-06.bopuaq.apse1.cache.amazonaws.com" || "localhost";
-    const auth = "WLKspMXeo5i6GqrWt" || "";
-    const tls = "true" ? "s" : "";
-    const client = redis.createClient({
-        url: `redis${tls}://:${auth}@${host}:${port}`,
-        database: databaseIndex || 0,
-    });
-
-    client.on("error", (err) => console.log("Redis Client Error", err));
-    await client.connect();
-
-    return client;
-};
-
-let transactionCacheService;
-// set data to session cache
-async function setCache(transactionID, data = {}) {
-    // session[orderId] = data  {};
-    transactionCacheService =
-        transactionCacheService || (await connectClient(20));
-
-    // Only status CREATED set expire 35 minutes, rest of them just keep expire
-    const ttl =
-        data.status && data.status.includes("STARTED_NORMAL") ? null : 2100;
-    await setValue(transactionCacheService, transactionID, data, ttl);
-
-    // set requestID
-    setContextRequestID(data.order);
-
-    // set traceParent
-    setContextTraceParent(data.order);
-}
-
-// get data from session cache
-async function getCache(transactionID) {
-    transactionCacheService =
-        transactionCacheService || (await connectClient(20));
-    // let sessionData = session[transactionID] || {}; // set temp empty default prevent exception
-
-    let sessionData =
-        (await getValue(transactionCacheService, transactionID)) || {};
-    // set requestID
-    setContextRequestID(sessionData.order);
-
-    // set traceParent
-    setContextTraceParent(sessionData.order);
-    return sessionData;
-}
-
-function setContextRequestID(sessionData) {
-    // Set requestID
-    const requestID =
-        sessionData && sessionData.hasOwnProperty("requestID")
-            ? sessionData.requestID
-            : null;
-
-    if (requestID) {
-        httpContext.set("requestID", requestID);
-    }
-
-    return requestID;
-}
-
-function setContextTraceParent(sessionData) {
-    // Set traceParent
-    const traceParent =
-        sessionData && sessionData.hasOwnProperty("traceParent")
-            ? sessionData.traceParent
-            : null;
-
-    if (traceParent) {
-        httpContext.set("traceParent", traceParent);
-    }
-    return traceParent;
-}
-
-const getValue = async (client, key) => {
-    if (!client) {
-        return null;
-    }
-
-    const json = await client.get(key);
-    return JSON.parse(json);
-};
-
-const requestPromise = (
-    options
-) => new Promise((rs, rj) => {
-    request(options, (error, response, body) => {
-        try {
-            const statusCode = response && response.statusCode;
-            const headers = (response && response.headers) || {};
-            return rs({ statusCode, error, response, body, headers });
-        } catch (exception) {
-            console.log(exception);
-            return rj(exception)
-        } finally {
-            // Write centralize log
-
-        }
-    });
-});
 
 async function CreateMerchantPay({
     data,
@@ -224,18 +62,16 @@ app.get('/', (req, res) => {
         orderNumber: "20221103113341",
         orderAmount: 10000,
         orderCurrency: "VND",
-        orderDateTime: "20220426083322",
         orderDescription: "DEMO TRANSACTION",
         paymentMethod: "DOMESTIC",
         sourceType: "",
-        otp: "on",
-        request: "purchase",
-        language: "vi",
-        successURL: "http://localhost:8000/api/result",
-        failureURL: "http://localhost:8000/api/result",
-        pendingURL: "http://localhost:8000/api/result",
-        cancelURL: "http://localhost:8000/api/cancel",
-        ipnURL: "https://0b04-58-186-241-92.ap.ngrok.io/api/ipn",
+        language: "en",
+        playgroundURL: PLAYGROUND_URL,
+        successURL: `${APP_PUBLIC_URL}/api/result`,
+        failureURL: `${APP_PUBLIC_URL}/api/result`,
+        pendingURL: `${APP_PUBLIC_URL}/api/result`,
+        cancelURL: `${APP_PUBLIC_URL}/api/cancel`,
+        ipnURL: `https://ac7b-58-186-241-92.ap.ngrok.io/api/ipns`,
         extraData: {
             customer: {
                 firstName: "Jacob",
@@ -345,7 +181,6 @@ app.get('/', (req, res) => {
     res.render('demo', { data });
 })
 
-
 app.post("/pay", async (req, res) => {
     const { orderNumber, orderAmount, orderCurrency, orderDescription, paymentMethod, sourceType, resultURL, cancelURL, ipnURL, language, extraData } = req.body;
     const data =
@@ -376,7 +211,7 @@ app.post("/pay", async (req, res) => {
     }
     const signature = sha256SignString(JSON.stringify(requestData), "GPAY");
 
-    const redirectPay = await fetch("https://uat-secure.galaxypay.vn/pay", {
+    const redirectPay = await fetch(`${MERCHANT_GW_URL}/Merchant/Pay`, {
         method: "post",
         headers: {
             APIKey: apiKey,
