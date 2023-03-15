@@ -4,5 +4,7 @@ module.exports = {
     MERCHANT_URL: process.env.MERCHANT_URL,
     APP_PUBLIC_URL: process.env.APP_PUBLIC_URL,
     MERCHANT_GW_URL: process.env.MERCHANT_GW_URL,
-    PLAYGROUND_URL: process.env.PLAYGROUND_URL
+    PLAYGROUND_URL: process.env.PLAYGROUND_URL,
+    APIKEY: process.env.APIKEY,
+    SALT: process.env.SALT
 }

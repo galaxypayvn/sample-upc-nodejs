@@ -8,7 +8,7 @@ const session = require("express-session");
 const NodeCache = require("node-cache");
 const myCache = new NodeCache({ stdTTL: 600, checkperiod: 600 });
 const { requestPromise } = require("./service/gatewayService")
-const { APP_PORT, PLAYGROUND_URL, APP_PUBLIC_URL, MERCHANT_GW_URL } = require("./scripts/config/config")
+const { APP_PORT, PLAYGROUND_URL, APP_PUBLIC_URL, MERCHANT_GW_URL, APIKEY, SALT } = require("./scripts/config/config")
 const { genYYYYMMDDHHmmss, uniqueId } = require("./scripts/util/commonUtils")
 const { sha256SignString } = require("./scripts/util/crypto")
 
@@ -65,7 +65,7 @@ app.get('/', (req, res) => {
         orderDescription: "DEMO TRANSACTION",
         paymentMethod: "DOMESTIC",
         sourceType: "",
-        language: "en",
+        language: "vi",
         playgroundURL: PLAYGROUND_URL,
         successURL: `${APP_PUBLIC_URL}/api/result`,
         failureURL: `${APP_PUBLIC_URL}/api/result`,
@@ -202,14 +202,14 @@ app.post("/pay", async (req, res) => {
         extraData
     }
 
-    const apiKey = "ICB7IjMyMzUiOiJWaWV0IEpldCIsImNyZWF0ZWQiOiIyMDIyMDgxNjEwNDU0MCJ9.8269013cb5af84a2db3a98b81c17ba4f7c975e494eaf9c8fce616f6f540359da";
+    const apiKey = APIKEY;
     const requestID = uniqueId();
     const requestData = {
         requestID,
         requestDateTime: genYYYYMMDDHHmmss(),
         requestData: data,
     }
-    const signature = sha256SignString(JSON.stringify(requestData), "GPAY");
+    const signature = sha256SignString(JSON.stringify(requestData), SALT);
 
     const redirectPay = await fetch(`${MERCHANT_GW_URL}/Merchant/Pay`, {
         method: "post",

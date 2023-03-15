@@ -14,7 +14,7 @@
 <body>
     <div class="container">
         <div>
-            <button id="btnSubmit" class="w-20 btn-hd-blue" onclick="location.href='<%= data.playgroundURL%>'">
+            <button class="w-20 btn-hd-blue" onclick="window.open('<%= data.playgroundURL%>', '_blank')" >
                 API Playground
             </button>
         </div>
@@ -129,7 +129,7 @@
                 document.getElementById("signature").innerHTML = `<label class = "label">Signature</label>${response.signature}`;
                 document.getElementById("requestData").innerHTML = `<label class="label">Request Data</label><textarea style="width: 100%; height: 240px;"> ${JSON.stringify(response.requestData, undefined, 2)}</textarea>`;
                 // document.getElementById("responseData").innerHTML = `<label class="label">Response Data</label><textarea style="width: 100%; height: 240px;"> ${JSON.stringify(response.json, undefined, 2)}</textarea>`;
-                document.getElementById("responseData").innerHTML = `<label class="label">Response Data</label><a href="${response.json.responseData.endpoint.replace("https://uat-payment.galaxypay.vn","http://localhost:8001")}" > ${response.json.responseData.endpoint}</a>`;
+                document.getElementById("responseData").innerHTML = `<label class="label">Response Data</label><a href="${response.json.responseData.endpoint}" > ${response.json.responseData.endpoint}</a>`;
             }).catch(function(err) {
                 return console.error(err);
             })
